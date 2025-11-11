@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>uk.ac.ed</groupId>
-    <artifactId>ilp_submission_1</artifactId>
+    <artifactId>ilp_submission_2</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>IlpTutorial1</name>
     <description>IlpTutorial1</description>

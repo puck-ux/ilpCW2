@@ -35,6 +35,10 @@ public class Calculations {
         if(checkPosinValid(pos1) || checkPosinValid(pos2)){
             throw400();
         }
+        // check in range
+        if(pos1.getLng() < -180 || pos1.getLng() > 180 || pos2.getLng() < -180 || pos2.getLng() > 180 || pos1.getLat() <  -90 || pos1.getLat() > 90 || pos2.getLat() < -90 || pos2.getLat() > 90){
+            throw400();
+        }
 
         // get distance between the x(lng) values
         double distanceX = pos1.getLng() - pos2.getLng();
@@ -52,7 +56,7 @@ public class Calculations {
         Double angle = input.getAngle();
 
         // handle angle that is not one of the 16 given in document
-        if(angle % 22.5 > 0 || checkPosinValid(start)){
+        if(angle % 22.5 > 0 || checkPosinValid(start) || angle > 360){
             throw400();
         }
 
@@ -79,6 +83,10 @@ public class Calculations {
         boolean inside = false;
         Position position = input.getPosition();
         Region region = input.getRegion();
+        // check that the vertices exist
+        if (region == null || region.getVertices() == null) {
+            throw400();
+        }
         List<Position> vertices = region.getVertices();
         Position first = vertices.getFirst();
         Position last = vertices.getLast();
