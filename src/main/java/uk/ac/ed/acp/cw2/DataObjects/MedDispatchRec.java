@@ -14,6 +14,7 @@ public class MedDispatchRec {
     private LocalDate date;
     private LocalTime time;
     private Requirements requirements;
+    private Position delivery;
 
     @Getter
     @Setter
@@ -23,4 +24,5 @@ public class MedDispatchRec {
         private Boolean heating;
         public Double maxCost;
     }
+
 }

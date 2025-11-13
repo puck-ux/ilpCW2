@@ -8,6 +8,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import uk.ac.ed.acp.cw2.DataObjects.*;
 
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,6 +22,34 @@ public class DroneCalc {
 
         ResponseEntity<List<Drones>> responseEntity = restTemplate.exchange(
                 endpoint + "/drones",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {
+                }
+        );
+        return responseEntity.getBody();
+    }
+
+    // returns service points as List of ServicePoints
+    public static List<ServicePoints> getServicePoints(String endpoint){
+        RestTemplate restTemplate = new RestTemplate();
+
+        ResponseEntity<List<ServicePoints>> responseEntity = restTemplate.exchange(
+                endpoint + "/drones-for-service-points",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {
+                }
+        );
+        return responseEntity.getBody();
+    }
+
+    // returns restricted areas as List of RestrictedAreas
+    public static List<RestrictedAreas> getRestrictedAreas(String endpoint){
+        RestTemplate restTemplate = new RestTemplate();
+
+        ResponseEntity<List<RestrictedAreas>> responseEntity = restTemplate.exchange(
+                endpoint + "/restricted-areas",
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<>() {
@@ -165,5 +194,49 @@ public class DroneCalc {
         }
 
         return findCommonElements(droneIDsList);
+    }
+
+
+
+    public static ArrayList<Long> queryAvailableDronesCalc(String endpoint, List<MedDispatchRec> medRecords){
+        List<Drones> drones = getDrones(endpoint);
+        List<ServicePoints> servicePoints = getServicePoints(endpoint);
+        ArrayList<Long> droneIDs = new ArrayList<>();
+        int numRecords = medRecords.size();
+
+        for (Drones drone : drones) {
+            Drones.Capability capability = drone.getCapability();
+            int count = 0;
+            for (MedDispatchRec medRecord : medRecords) {
+                String medRecDay = medRecord.getDate().getDayOfWeek().toString().toUpperCase();
+                LocalTime medRecTime = medRecord.getTime();
+
+                for(ServicePoints servicePoint : servicePoints){
+                    for(ServicePoints.DroneService servDrone : servicePoint.getDrones()){
+                        if(Long.parseLong(servDrone.getId()) == drone.getId()){
+                            for(ServicePoints.Day day : servDrone.getAvailability()){
+                                if(day.getDayOfWeek().equals(medRecDay) && (!medRecTime.isBefore(day.getFrom()) && !medRecTime.isAfter(day.getUntil()))){
+                                    MedDispatchRec.Requirements requirements = medRecord.getRequirements();
+                                    if (capability.getCooling() == requirements.getCooling() &&
+                                            capability.getHeating() == requirements.getHeating() &&
+                                            capability.getCapacity() >= requirements.getCapacity()) {
+                                        count++;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (count == numRecords) {
+                droneIDs.add(drone.getId());
+            }
+        }
+        return droneIDs;
+    }
+
+
+    public static DeliveryPath calcDeliveryPathCalc(String endpoint, List<MedDispatchRec> medRecords){
+        return null;
     }
 }

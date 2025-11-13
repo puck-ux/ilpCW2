@@ -115,4 +115,14 @@ public class ServiceController {
     public ArrayList<Long> query(@RequestBody List<queryFormat> input){
         return DroneCalc.queryCalc(ilpEndpoint, input);
     }
+
+    @PostMapping("/queryAvailableDrones")
+    public ArrayList<Long> queryAvailableDrones(@RequestBody List<MedDispatchRec> input){
+        return  DroneCalc.queryAvailableDronesCalc(ilpEndpoint, input);
+    }
+
+    @PostMapping("/calcDeliveryPath")
+    public DeliveryPath calcDeliveryPath(@RequestBody List<MedDispatchRec> input){
+        return DroneCalc.calcDeliveryPathCalc(ilpEndpoint, input);
+    }
 }
