@@ -13,7 +13,7 @@ public class Drones {
 
     @Getter
     @Setter
-    private static class Capability {
+    public static class Capability {
         private Boolean cooling;
         private Boolean heating;
         private Long capacity;

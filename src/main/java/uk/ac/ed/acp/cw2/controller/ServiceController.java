@@ -11,14 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
-import uk.ac.ed.acp.cw2.DataObjects.DroneMovement;
-import uk.ac.ed.acp.cw2.DataObjects.Position;
-import uk.ac.ed.acp.cw2.DataObjects.RegionFormat;
-import uk.ac.ed.acp.cw2.DataObjects.TwoPosConfig;
-import uk.ac.ed.acp.cw2.service.Calculations;
+import uk.ac.ed.acp.cw2.DataObjects.*;
+import uk.ac.ed.acp.cw2.service.*;
 
+import java.io.OutputStream;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.util.*;
 
@@ -42,8 +39,6 @@ public class ServiceController {
         this.ilpEndpoint = ilpEndpoint;
         this.serviceUrl = new URL(ilpEndpoint);
     }
-
-
 
 
     @GetMapping("/showDrones")
@@ -101,5 +96,23 @@ public class ServiceController {
         return Calculations.isInRegionCalc(input);
     }
 
+    @GetMapping("/dronesWithCooling/{cooling}")
+    public ArrayList<Long> dronesWithCooling(@PathVariable boolean cooling) {
+        return DroneCalc.dronesWithCoolingCalc(ilpEndpoint, cooling);
+    }
 
+    @GetMapping("/droneDetails/{id}")
+    public Drones droneDetails(@PathVariable Long id){
+        return DroneCalc.droneDetailsCalc(ilpEndpoint, id);
+    }
+
+    @GetMapping("/queryAsPath/{attributeName}/{attributeValue}")
+    public ArrayList<Long> queryAsPath(@PathVariable String attributeName, @PathVariable String attributeValue){
+        return DroneCalc.queryAsPathCalc(ilpEndpoint, attributeName, attributeValue, "=");
+    }
+
+    @PostMapping("/query")
+    public ArrayList<Long> query(@RequestBody List<queryFormat> input){
+        return DroneCalc.queryCalc(ilpEndpoint, input);
+    }
 }
