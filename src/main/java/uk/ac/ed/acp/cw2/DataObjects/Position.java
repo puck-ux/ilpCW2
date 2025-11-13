@@ -1,6 +1,5 @@
-package uk.ac.ed.acp.cw2.configuration;
+package uk.ac.ed.acp.cw2.DataObjects;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 

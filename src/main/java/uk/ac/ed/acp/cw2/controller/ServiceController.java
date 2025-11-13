@@ -1,15 +1,26 @@
 package uk.ac.ed.acp.cw2.controller;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
-import uk.ac.ed.acp.cw2.configuration.*;
+import uk.ac.ed.acp.cw2.DataObjects.DroneMovement;
+import uk.ac.ed.acp.cw2.DataObjects.Position;
+import uk.ac.ed.acp.cw2.DataObjects.RegionFormat;
+import uk.ac.ed.acp.cw2.DataObjects.TwoPosConfig;
 import uk.ac.ed.acp.cw2.service.Calculations;
 
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
+import java.util.*;
 
 /**
  * Controller class that handles various HTTP endpoints for the application.
@@ -20,10 +31,26 @@ import java.net.URL;
 @RequestMapping("/api/v1")
 public class ServiceController {
 
+
     private static final Logger logger = LoggerFactory.getLogger(ServiceController.class);
 
-    @Value("${ilp.service.url}")
-    public URL serviceUrl;
+    private final String ilpEndpoint;
+    private final URL serviceUrl;
+
+    @Autowired
+    public ServiceController(@Qualifier("ilpEndpoint") String ilpEndpoint) throws MalformedURLException {
+        this.ilpEndpoint = ilpEndpoint;
+        this.serviceUrl = new URL(ilpEndpoint);
+    }
+
+
+
+
+    @GetMapping("/showDrones")
+    public List<Map<String, Object>> showDrones() {
+        RestTemplate restTemplate = new RestTemplate();
+        return restTemplate.getForObject(ilpEndpoint + "/drones", List.class);
+    }
 
 
     @GetMapping("/")
@@ -39,17 +66,6 @@ public class ServiceController {
     @GetMapping("/uid")
     public String uid() {
         return "s2179931";
-    }
-
-
-    // checks if a position is invalid and returns true if it is
-    public boolean checkPosinValid(Position position){
-        return (position == null || position.getLat() == null || position.getLng() == null);
-    }
-
-    // throws error 400
-    public void throw400(){
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
     }
 
 
@@ -85,9 +101,5 @@ public class ServiceController {
         return Calculations.isInRegionCalc(input);
     }
 
-    /*
-    ADD UNIT TESTS
-    EXCEPTION HANDLING CLASS
-    MAKE COMMENTS INCLUDE PARAMETER DESCRIPTIONS
-     */
+
 }

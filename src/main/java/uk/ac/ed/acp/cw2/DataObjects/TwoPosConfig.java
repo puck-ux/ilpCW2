@@ -1,4 +1,4 @@
-package uk.ac.ed.acp.cw2.configuration;
+package uk.ac.ed.acp.cw2.DataObjects;
 
 import lombok.Getter;
 import lombok.Setter;

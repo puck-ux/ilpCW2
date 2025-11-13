@@ -11,5 +11,12 @@ import java.net.URL;
 @EnableScheduling
 public class IlpRestServiceConfig {
 
-
+    @Bean(name = "ilpEndpoint")
+    public String ilpEndpoint() {
+        // If ILP_ENDPOINT is not set, use the default ILP service URL
+        return System.getenv().getOrDefault(
+                "ILP_ENDPOINT",
+                "https://ilp-rest-2025-bvh6e9hschfagrgy.ukwest-01.azurewebsites.net/"
+        );
+    }
 }

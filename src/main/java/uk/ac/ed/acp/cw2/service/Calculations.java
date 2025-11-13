@@ -1,13 +1,16 @@
 package uk.ac.ed.acp.cw2.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
+import uk.ac.ed.acp.cw2.DataObjects.*;
 import uk.ac.ed.acp.cw2.configuration.*;
-import uk.ac.ed.acp.cw2.exception.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class Calculations {
