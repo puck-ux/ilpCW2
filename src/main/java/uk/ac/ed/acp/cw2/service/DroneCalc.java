@@ -97,6 +97,16 @@ public class DroneCalc {
         return new ArrayList<>(intersection);
     }
 
+    public static Map<Long, List<ServicePoints.Day>> getDroneDays(List<ServicePoints> servicePoints) {
+        Map<Long, List<ServicePoints.Day>> droneDays = new HashMap<>();
+        for (ServicePoints servicePoint : servicePoints) {
+            for(ServicePoints.DroneService servDrone : servicePoint.getDrones()){
+                droneDays.put(Long.parseLong(servDrone.getId()), servDrone.getAvailability());
+            }
+        }
+        return droneDays;
+    }
+
     // --------------------------- END OF HELPERS ---------------------------
 
     // returns drones with given cooling
@@ -201,6 +211,7 @@ public class DroneCalc {
     public static ArrayList<Long> queryAvailableDronesCalc(String endpoint, List<MedDispatchRec> medRecords){
         List<Drones> drones = getDrones(endpoint);
         List<ServicePoints> servicePoints = getServicePoints(endpoint);
+        Map<Long, List<ServicePoints.Day>> droneDays = getDroneDays(servicePoints);
         ArrayList<Long> droneIDs = new ArrayList<>();
         int numRecords = medRecords.size();
 
@@ -211,22 +222,18 @@ public class DroneCalc {
                 String medRecDay = medRecord.getDate().getDayOfWeek().toString().toUpperCase();
                 LocalTime medRecTime = medRecord.getTime();
 
-                for(ServicePoints servicePoint : servicePoints){
-                    for(ServicePoints.DroneService servDrone : servicePoint.getDrones()){
-                        if(Long.parseLong(servDrone.getId()) == drone.getId()){
-                            for(ServicePoints.Day day : servDrone.getAvailability()){
-                                if(day.getDayOfWeek().equals(medRecDay) && (!medRecTime.isBefore(day.getFrom()) && !medRecTime.isAfter(day.getUntil()))){
-                                    MedDispatchRec.Requirements requirements = medRecord.getRequirements();
-                                    if (capability.getCooling() == requirements.getCooling() &&
-                                            capability.getHeating() == requirements.getHeating() &&
-                                            capability.getCapacity() >= requirements.getCapacity()) {
-                                        count++;
-                                    }
-                                }
-                            }
+                List<ServicePoints.Day> days = droneDays.get(drone.getId());
+                for(ServicePoints.Day day : days){
+                    if(day.getDayOfWeek().equals(medRecDay) && (!medRecTime.isBefore(day.getFrom()) && !medRecTime.isAfter(day.getUntil()))){
+                        MedDispatchRec.Requirements requirements = medRecord.getRequirements();
+                        if (capability.getCooling() == requirements.getCooling() &&
+                                capability.getHeating() == requirements.getHeating() &&
+                                capability.getCapacity() >= requirements.getCapacity()) {
+                            count++;
                         }
                     }
                 }
+
             }
             if (count == numRecords) {
                 droneIDs.add(drone.getId());
