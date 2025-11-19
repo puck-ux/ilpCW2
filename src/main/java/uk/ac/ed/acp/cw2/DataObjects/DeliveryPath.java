@@ -22,7 +22,7 @@ public class DeliveryPath {
     @Getter
     @Setter
     public static class Delivery {
-        private Long deliveryId;
+        private Integer deliveryId;
         private List<Position> flightPath;
     }
 }

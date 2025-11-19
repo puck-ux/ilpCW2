@@ -8,14 +8,14 @@ import lombok.Setter;
 public class ServicePointCoords {
 
     private String name;
-    private Long id;
+    private Integer id;
     private ServicePos location;
 
     @Getter
     @Setter
     public static class ServicePos {
-        private Long lng;
-        private Long lat;
-        private Long alt;
+        private Double lng;
+        private Double lat;
+        private Double alt;
     }
 }

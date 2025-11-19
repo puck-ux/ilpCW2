@@ -9,7 +9,7 @@ import lombok.Setter;
 public class RestrictedAreas {
 
     private String name;
-    private Long id;
+    private Integer id;
     private Limits limits;
     private List<Position> vertices;
 

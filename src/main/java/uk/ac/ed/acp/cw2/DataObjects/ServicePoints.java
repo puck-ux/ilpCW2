@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 public class ServicePoints {
 
-    private Long servicePointId;
+    private Integer servicePointId;
     private List<DroneService> drones;
 
     @Getter

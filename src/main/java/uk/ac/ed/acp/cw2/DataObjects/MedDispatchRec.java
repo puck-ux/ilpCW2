@@ -10,7 +10,7 @@ import java.time.LocalTime;
 @Setter
 public class MedDispatchRec {
 
-    private Long id;
+    private Integer id;
     private LocalDate date;
     private LocalTime time;
     private Requirements requirements;
