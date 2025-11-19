@@ -85,11 +85,11 @@ public class DroneCalc {
         };
     }
 
-    public static ArrayList<Long> findCommonElements(List<List<Long>> listOfLists) {
+    public static ArrayList<String> findCommonElements(List<List<String>> listOfLists) {
         if (listOfLists == null || listOfLists.isEmpty()) {
             return new ArrayList<>();
         }
-        Set<Long> intersection = new HashSet<>(listOfLists.getFirst());
+        Set<String> intersection = new HashSet<>(listOfLists.getFirst());
         for (int i = 1; i < listOfLists.size(); i++) {
             intersection.retainAll(listOfLists.get(i));
         }
@@ -97,11 +97,11 @@ public class DroneCalc {
         return new ArrayList<>(intersection);
     }
 
-    public static Map<Long, List<ServicePoints.Day>> getDroneDays(List<ServicePoints> servicePoints) {
-        Map<Long, List<ServicePoints.Day>> droneDays = new HashMap<>();
+    public static Map<String, List<ServicePoints.Day>> getDroneDays(List<ServicePoints> servicePoints) {
+        Map<String, List<ServicePoints.Day>> droneDays = new HashMap<>();
         for (ServicePoints servicePoint : servicePoints) {
             for(ServicePoints.DroneService servDrone : servicePoint.getDrones()){
-                droneDays.put(Long.parseLong(servDrone.getId()), servDrone.getAvailability());
+                droneDays.put(servDrone.getId(), servDrone.getAvailability());
             }
         }
         return droneDays;
@@ -110,9 +110,9 @@ public class DroneCalc {
     // --------------------------- END OF HELPERS ---------------------------
 
     // returns drones with given cooling
-    public static ArrayList<Long> dronesWithCoolingCalc(String endpoint, Boolean state){
+    public static ArrayList<String> dronesWithCoolingCalc(String endpoint, Boolean state){
         List<Drones> drones = getDrones(endpoint);
-        ArrayList<Long> droneIDs = new ArrayList<>();
+        ArrayList<String> droneIDs = new ArrayList<>();
         for(Drones drone :  drones){
             if(drone.getCapability().getCooling() == state){
                 droneIDs.add(drone.getId());
@@ -122,9 +122,9 @@ public class DroneCalc {
     }
 
     // returns drone with given id
-    public static Drones droneDetailsCalc(String endpoint, Long id){
+    public static Drones droneDetailsCalc(String endpoint, String id){
         List<Drones> drones = getDrones(endpoint);
-        Map<Long, Drones> droneMap = drones.stream().collect(Collectors.toMap(Drones::getId, drone -> drone));
+        Map<String, Drones> droneMap = drones.stream().collect(Collectors.toMap(Drones::getId, drone -> drone));
         Drones foundDrone;
         if ((foundDrone = droneMap.get(id)) != null) {
             return foundDrone;
@@ -135,10 +135,10 @@ public class DroneCalc {
 
 
     // finds drones with attributes
-    public static ArrayList<Long> queryAsPathCalc(String endpoint, String attributeName, String attributeValue, String operator){
+    public static ArrayList<String> queryAsPathCalc(String endpoint, String attributeName, String attributeValue, String operator){
 
         List<Drones> drones = getDrones(endpoint);
-        ArrayList<Long> droneIDs = new ArrayList<>();
+        ArrayList<String> droneIDs = new ArrayList<>();
 
         // handle cooling and heating
         if((attributeValue.equals("true") || attributeValue.equals("false"))) {
@@ -196,8 +196,8 @@ public class DroneCalc {
     }
 
 
-    public static ArrayList<Long> queryCalc(String endpoint, List<queryFormat> queries){
-        List<List<Long>> droneIDsList = new ArrayList<>();
+    public static ArrayList<String> queryCalc(String endpoint, List<queryFormat> queries){
+        List<List<String>> droneIDsList = new ArrayList<>();
 
         for(queryFormat query : queries){
             droneIDsList.add(queryAsPathCalc(endpoint, query.getAttribute(), query.getValue(), query.getOperator()));
@@ -208,11 +208,11 @@ public class DroneCalc {
 
 
 
-    public static ArrayList<Long> queryAvailableDronesCalc(String endpoint, List<MedDispatchRec> medRecords){
+    public static ArrayList<String> queryAvailableDronesCalc(String endpoint, List<MedDispatchRec> medRecords){
         List<Drones> drones = getDrones(endpoint);
         List<ServicePoints> servicePoints = getServicePoints(endpoint);
-        Map<Long, List<ServicePoints.Day>> droneDays = getDroneDays(servicePoints);
-        ArrayList<Long> droneIDs = new ArrayList<>();
+        Map<String, List<ServicePoints.Day>> droneDays = getDroneDays(servicePoints);
+        ArrayList<String> droneIDs = new ArrayList<>();
         int numRecords = medRecords.size();
 
         for (Drones drone : drones) {
@@ -226,11 +226,11 @@ public class DroneCalc {
                 for(ServicePoints.Day day : days){
                     if(day.getDayOfWeek().equals(medRecDay) && (!medRecTime.isBefore(day.getFrom()) && !medRecTime.isAfter(day.getUntil()))){
                         MedDispatchRec.Requirements requirements = medRecord.getRequirements();
-                        if (capability.getCooling() == requirements.getCooling() &&
-                                capability.getHeating() == requirements.getHeating() &&
+                        if ((requirements.getCooling() ? capability.getCooling() : true) &&
+                                (requirements.getHeating() ? capability.getHeating() : true) &&
                                 capability.getCapacity() >= requirements.getCapacity()) {
                             count++;
-                        }
+                        } else break;
                     }
                 }
 

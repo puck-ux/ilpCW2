@@ -8,7 +8,7 @@ import lombok.Setter;
 public class Drones {
 
     private String name;
-    private Long id;
+    private String id;
     private Capability capability;
 
     @Getter

@@ -15,7 +15,7 @@ public class DeliveryPath {
     @Getter
     @Setter
     public static class DronePath {
-        private Long droneId;
+        private String droneId;
         private List<Delivery> deliveries;
     }
 

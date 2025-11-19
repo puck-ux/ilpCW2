@@ -96,28 +96,30 @@ public class ServiceController {
         return Calculations.isInRegionCalc(input);
     }
 
+
+    // COURSEWORK 2
     @GetMapping("/dronesWithCooling/{cooling}")
-    public ArrayList<Long> dronesWithCooling(@PathVariable boolean cooling) {
+    public ArrayList<String> dronesWithCooling(@PathVariable boolean cooling) {
         return DroneCalc.dronesWithCoolingCalc(ilpEndpoint, cooling);
     }
 
     @GetMapping("/droneDetails/{id}")
-    public Drones droneDetails(@PathVariable Long id){
+    public Drones droneDetails(@PathVariable String id){
         return DroneCalc.droneDetailsCalc(ilpEndpoint, id);
     }
 
     @GetMapping("/queryAsPath/{attributeName}/{attributeValue}")
-    public ArrayList<Long> queryAsPath(@PathVariable String attributeName, @PathVariable String attributeValue){
+    public ArrayList<String> queryAsPath(@PathVariable String attributeName, @PathVariable String attributeValue){
         return DroneCalc.queryAsPathCalc(ilpEndpoint, attributeName, attributeValue, "=");
     }
 
     @PostMapping("/query")
-    public ArrayList<Long> query(@RequestBody List<queryFormat> input){
+    public ArrayList<String> query(@RequestBody List<queryFormat> input){
         return DroneCalc.queryCalc(ilpEndpoint, input);
     }
 
     @PostMapping("/queryAvailableDrones")
-    public ArrayList<Long> queryAvailableDrones(@RequestBody List<MedDispatchRec> input){
+    public ArrayList<String> queryAvailableDrones(@RequestBody List<MedDispatchRec> input){
         return  DroneCalc.queryAvailableDronesCalc(ilpEndpoint, input);
     }
 
