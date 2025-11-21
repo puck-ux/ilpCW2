@@ -186,22 +186,19 @@ public class DroneCalc {
             180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5
     };
 
-    public static Position nextStep(Position current, Position destination, List<RestrictedAreas> restricted) {
-        System.out.println("\n[DEBUG] === nextStep() ===");
+    public static Position nextStep(Position current, Position destination, List<RestrictedAreas> restricted, Position lastPosition) {
+
         Position bestMove = null;
-        double minDist = Double.MAX_VALUE;
-        System.out.println("[DEBUG] Calculating Angle");
-        // calculate the main angle to destination
+        double bestScore = Double.MAX_VALUE;
+
+        // Calculate main angle to destination
         double mainAngle = Math.toDegrees(Math.atan2(destination.getLat() - current.getLat(),
                 destination.getLng() - current.getLng()));
         if (mainAngle < 0) mainAngle += 360;
-        System.out.println("[DEBUG] Main angle: " + mainAngle);
-        // Try angles: mainAngle ± offsets
-        double[] angleOffsets = {0, -45, -22.5, 22.5, 45, -67.5, 67.5, -90, 90};
 
+        // Snap to nearest allowed angle
         double snapped = ALLOWED_ANGLES[0];
         double diffMin = Math.abs(mainAngle - snapped);
-
         for (double angle : ALLOWED_ANGLES) {
             double diff = Math.abs(mainAngle - angle);
             if (diff < diffMin) {
@@ -210,7 +207,7 @@ public class DroneCalc {
             }
         }
 
-        System.out.println("[DEBUG] Snapped Angle = " + snapped);
+        double[] angleOffsets = {0, -45, -22.5, 22.5, 45, -67.5, 67.5, -90, 90, -112.5, 112.5, -135, 135, -157.5, 157.5};
 
         for (double offset : angleOffsets) {
             double angle = snapped + offset;
@@ -223,31 +220,20 @@ public class DroneCalc {
 
             Position nextPos = Calculations.nextPositionCalc(move);
 
-            // skip if blocked
-            if (!isPositionValid(nextPos, restricted)) {
-                System.out.println("[DEBUG] Blocked position at angle " + angle + ": " + nextPos.getLat() + ", " + nextPos.getLng());
-                continue;
-            }
+            // Skip if blocked by restricted areas
+            if (!isPositionValid(nextPos, restricted)) continue;
 
-            // calculate distance to destination
-            TwoPosConfig cfg = new TwoPosConfig();
-            cfg.setPosition1(nextPos);
-            cfg.setPosition2(destination);
-            double dist = Calculations.distanceToCalc(cfg);
+            // Skip if too close to last position (avoid backtracking)
+            double distanceToLast = Calculations.distanceToCalc(new TwoPosConfig(lastPosition, nextPos));
+            if (distanceToLast < 0.00005) continue;
 
-            if (dist < minDist) {
-                minDist = dist;
+            // Score = distance to destination
+            double distToDest = Calculations.distanceToCalc(new TwoPosConfig(nextPos, destination));
+
+            if (distToDest < bestScore) {
+                bestScore = distToDest;
                 bestMove = nextPos;
-                if(offset == 0){
-                    break;
-                }
             }
-        }
-
-        if (bestMove == null) {
-            System.out.println("[DEBUG] No valid move found from current position: " + current.getLat() + ", " + current.getLng());
-        } else {
-            System.out.println("[DEBUG] Best move selected: " + bestMove.getLat() + ", " + bestMove.getLng());
         }
 
         return bestMove;
@@ -273,11 +259,11 @@ public class DroneCalc {
 
         int moves = 0;
 
+        Position lastPosition = new Position(0.0, 0.0);
         Position current = new Position(start.getLng(), start.getLat());
 
-        TwoPosConfig cfg = new TwoPosConfig();
-        cfg.setPosition1(current);
-        cfg.setPosition2(destination);
+        TwoPosConfig cfg = new TwoPosConfig(current, destination);
+
 
         int safety = 0;
 
@@ -285,7 +271,7 @@ public class DroneCalc {
             System.out.println("\n[DEBUG] Loop iteration " + moves);
             System.out.println("[DEBUG] Current distance: " + Calculations.distanceToCalc(cfg));
 
-            Position next = nextStep(current, destination, restricted);
+            Position next = nextStep(current, destination, restricted, lastPosition);
 
             if (next == null) {
                 System.out.println("[DEBUG] Next step is null → stuck!");
@@ -300,6 +286,7 @@ public class DroneCalc {
             System.out.println("[DEBUG] Moving to: " + next.getLat() + ", " + next.getLng());
 
             path.add(next);
+            lastPosition = current;
             current = next;
             cfg.setPosition1(next);
             moves++;
@@ -455,27 +442,34 @@ public class DroneCalc {
                                             Position start = new Position(servicePointCoord.getLocation().getLng(), servicePointCoord.getLocation().getLat());
 
                                             // make TwoposConfig
-                                            TwoPosConfig cfg = new  TwoPosConfig();
-                                            cfg.setPosition1(start);
-                                            cfg.setPosition2(medRecord.getDelivery());
+                                            TwoPosConfig cfg = new  TwoPosConfig(start, medRecord.getDelivery());
 
                                             //calculate distance times by two since every drone must go back
                                             Double numbMoves = 2*((Calculations.distanceToCalc(cfg))/0.00015);
-
+                                            System.out.println("NUMBER OF MOVES " + numbMoves);
                                             // check location is valid with cost and moves
                                             if(medRecord.getRequirements().getMaxCost() != null){
-                                                if((numbMoves*drone.getCapability().getCostPerMove() + drone.getCapability().getCostFinal() + drone.getCapability().getCostInitial()) > medRecord.getRequirements().getMaxCost()){
+                                                System.out.println("TRIGGERING");
+                                                if((numbMoves*drone.getCapability().getCostPerMove() + drone.getCapability().getCostFinal() + drone.getCapability().getCostInitial()) > medRecord.getRequirements().getMaxCost()) {
                                                     break;
-                                                }else if( numbMoves <= drone.getCapability().getMaxMoves()) {
-                                                    // check requirements
-                                                    MedDispatchRec.Requirements requirements = medRecord.getRequirements();
+                                                }
+                                            }
+                                            // drone either passes cost or there is no maxcost
+                                            if( numbMoves <= drone.getCapability().getMaxMoves()) {
+                                                // check requirements
+                                                MedDispatchRec.Requirements requirements = medRecord.getRequirements();
+                                                System.out.println("drone capacity for drone " + drone.getId() + " is: " + capability.getCapacity() + " medrecord capability " + requirements.getCapacity());
+                                                if (requirements.getCooling() != null && requirements.getHeating() != null) {
                                                     if ((requirements.getCooling() ? capability.getCooling() : true) &&
                                                             (requirements.getHeating() ? capability.getHeating() : true) &&
                                                             capability.getCapacity() >= requirements.getCapacity()) {
                                                         count++;
                                                     }
-                                                }else break;
-                                            }
+                                                }else if(capability.getCapacity() >= requirements.getCapacity()){
+                                                    count++;
+                                                }
+
+                                            }else break;
                                         }
                                     }
                                 }
@@ -493,230 +487,140 @@ public class DroneCalc {
     }
 
 
-    public static DeliveryPath calcDeliveryPathMain(String endpoint, List<MedDispatchRec> medRecords){
+    public static DeliveryPath calcDeliveryPathMain(String endpoint, List<MedDispatchRec> medRecords) {
+
         System.out.println("\n==============================");
-        System.out.println("calcDeliveryPathCalc START");
+        System.out.println("calcDeliveryPathMain START");
         System.out.println("Incoming medRecords = " + medRecords.size());
         System.out.println("==============================\n");
 
         DeliveryPath result = new DeliveryPath();
         result.setDronePaths(new ArrayList<>());
 
-        // ----------------------------------------
-        // DEBUG: Query available drones
-        // ----------------------------------------
-        System.out.println("[DEBUG] Querying available drones...");
+        if (medRecords.isEmpty()) return result;
+
         ArrayList<String> availableDrones = queryAvailableDronesCalc(endpoint, medRecords);
-        System.out.println("[DEBUG] availableDrones = " + availableDrones);
+        if (availableDrones.isEmpty()) return result;
 
-        if (medRecords.isEmpty() || availableDrones.isEmpty()) {
-            System.out.println("[DEBUG] No medRecords or no drones → Returning empty result");
-            return result;
-        }
-
-        // ----------------------------------------
-        // DEBUG: Load server data
-        // ----------------------------------------
-        System.out.println("[DEBUG] Loading service data...");
         List<ServicePoints> servicePoints = getServicePoints(endpoint);
         List<ServicePointCoords> servicePointCoords = getServicePointCoords(endpoint);
         List<RestrictedAreas> restrictedAreas = getRestrictedAreas(endpoint);
         List<Drones> drones = getDrones(endpoint);
 
-        System.out.println("[DEBUG] servicePoints = " + servicePoints.size());
-        System.out.println("[DEBUG] servicePointCoords = " + servicePointCoords.size());
-        System.out.println("[DEBUG] restrictedAreas = " + restrictedAreas.size());
-        System.out.println("[DEBUG] drones = " + drones.size());
-
         Map<String, Drones> droneMap = drones.stream()
-                .collect(Collectors.toMap(Drones::getId, drone -> drone));
+                .collect(Collectors.toMap(Drones::getId, d -> d));
 
         Set<Integer> completedDeliveries = new HashSet<>();
+        double globalTotalCost = 0.0;
+        double globalTotalMoves = 0.0;
 
-        double totalCost = 0;
-        double totalMoves = 0;
-        boolean noSecond = true;
+        for (String droneID : availableDrones) {
+            Position start = getDroneStartPosition(droneID, servicePointCoords, servicePoints);
+            if (start == null) continue;
 
-        // ----------------------------------------
-        // MAIN DRONE LOOP
-        //-----------------------------------------
-        for(String droneID : availableDrones) {
-            System.out.println("\n==============================");
-            System.out.println("[DEBUG] Starting drone: " + droneID);
-            System.out.println("==============================");
+            double droneMaxMoves = droneMap.get(droneID).getCapability().getMaxMoves();
+            double droneCapacity = droneMap.get(droneID).getCapability().getCapacity();
+            double costPerMove = droneMap.get(droneID).getCapability().getCostPerMove();
+            double costInitial = droneMap.get(droneID).getCapability().getCostInitial();
+            double costFinal = droneMap.get(droneID).getCapability().getCostFinal();
 
-            noSecond = true;
+            List<DeliveryPath.Delivery> droneDeliveries = new ArrayList<>();
+            Position currentPos = start;
+            double usedMoves = 0.0;
+            double usedCostForTotals = 0.0;
 
-            for(MedDispatchRec medRecord : medRecords) {
+            List<MedDispatchRec> sequenceDeliveries = new ArrayList<>();
+            double sequenceCapacityUsed = 0.0;
 
-                if(completedDeliveries.contains(medRecord.getId())) {
-                    System.out.println("[DEBUG] Delivery " + medRecord.getId() + " already completed → skipping");
-                    continue;
-                }
+            boolean keepTrying = true;
 
-                System.out.println("\n[DEBUG] Trying FIRST delivery: " + medRecord.getId());
+            while (keepTrying) {
+                keepTrying = false;
 
-                Position destination = medRecord.getDelivery();
-                Position start = getDroneStartPosition(droneID, servicePointCoords, servicePoints);
+                for (MedDispatchRec candidate : medRecords) {
+                    if (completedDeliveries.contains(candidate.getId())) continue;
+                    if (candidate.getDelivery() == null) continue;
 
-                System.out.println("[DEBUG] Start position = " + start);
-                System.out.println("[DEBUG] Delivery destination = " + destination);
+                    double candidateCapacity = (candidate.getRequirements() != null && candidate.getRequirements().getCapacity() != null)
+                            ? candidate.getRequirements().getCapacity() : 0.0;
 
-                // FIRST PATH
-                System.out.println("[DEBUG] Computing FIRST path...");
-                PathResult path = computePath(start, destination, restrictedAreas);
-                System.out.println("[DEBUG] path result FIRST = " + (path == null ? "NULL" : "OK"));
+                    boolean needsReturn = (sequenceCapacityUsed + candidateCapacity) > droneCapacity;
 
-                if (path == null) {
-                    System.out.println("[ERROR] computePath returned NULL for first delivery");
-                    return result;
-                }
+                    PathResult legPath;
+                    PathResult returnPath;
 
-                double thisMoves = path.getMoves();
-                double thisCost = thisMoves * droneMap.get(droneID).getCapability().getCostPerMove();
-
-                System.out.println("[DEBUG] First leg moves = " + thisMoves);
-                System.out.println("[DEBUG] First leg cost = " + thisCost);
-
-                completedDeliveries.add(medRecord.getId());
-
-                // ----------------------------------------
-                // TRY SECOND DELIVERY
-                // ----------------------------------------
-                for(MedDispatchRec medRecord2 : medRecords) {
-
-                    if(completedDeliveries.contains(medRecord2.getId())) continue;
-
-                    System.out.println("\n[DEBUG] Trying SECOND delivery: " + medRecord2.getId());
-
-                    Position destination2 = medRecord2.getDelivery();
-
-                    System.out.println("[DEBUG] Computing SECOND path (dest1 → dest2)...");
-                    PathResult path2 = computePath(destination, destination2, restrictedAreas);
-                    System.out.println("[DEBUG] path result SECOND = " + (path2 == null ? "NULL" : "OK"));
-
-                    System.out.println("[DEBUG] Computing RETURN path (dest2 → start)...");
-                    PathResult path3 = computePath(destination2, start, restrictedAreas);
-                    System.out.println("[DEBUG] path result RETURN = " + (path3 == null ? "NULL" : "OK"));
-
-                    if (path2 == null || path3 == null) {
-                        System.out.println("[DEBUG] Second or return path null → cannot do double delivery");
-                        break;
+                    if (needsReturn) {
+                        // Drone must return to start first (no init/final added for this return)
+                        legPath = computePath(start, candidate.getDelivery(), restrictedAreas);
+                        returnPath = computePath(candidate.getDelivery(), start, restrictedAreas);
+                        sequenceCapacityUsed = candidateCapacity;
+                        sequenceDeliveries.clear();
+                        currentPos = start;
+                    } else {
+                        legPath = computePath(currentPos, candidate.getDelivery(), restrictedAreas);
+                        returnPath = computePath(candidate.getDelivery(), start, restrictedAreas);
+                        sequenceCapacityUsed += candidateCapacity;
                     }
 
-                    double secondMoves = path2.getMoves();
-                    double thirdMoves = path3.getMoves();
-                    double secondCost = secondMoves * droneMap.get(droneID).getCapability().getCostPerMove();
-                    double thirdCost = thirdMoves * droneMap.get(droneID).getCapability().getCostPerMove();
 
-                    double pathCosts = secondCost + thirdCost + thisCost
-                            + droneMap.get(droneID).getCapability().getCostInitial()
-                            + droneMap.get(droneID).getCapability().getCostFinal();
+                    double legMoves = legPath.getMoves();
+                    double retMoves = returnPath.getMoves();
+                    double projectedMoves = usedMoves + legMoves + retMoves;
+                    if (projectedMoves > droneMaxMoves) continue;
 
-                    double pathMoves = thisMoves + secondMoves + thirdMoves;
+                    // Accept delivery
+                    usedMoves += legMoves + retMoves;
 
-                    System.out.println("[DEBUG] secondMoves = " + secondMoves + ", thirdMoves = " + thirdMoves);
-                    System.out.println("[DEBUG] total double path moves = " + pathMoves);
-                    System.out.println("[DEBUG] total double path cost = " + pathCosts);
+                    double deliveryCost = legMoves * costPerMove + retMoves * costPerMove;
 
-                    // Valid second delivery?
-                    if(medRecord.getRequirements().getMaxCost() != null && medRecord2.getRequirements().getMaxCost() != null) {
-                       if(pathCosts > medRecord.getRequirements().getMaxCost() + medRecord2.getRequirements().getMaxCost()){
-                           break;
-                       } else if (pathMoves <= droneMap.get(droneID).getCapability().getMaxMoves() && medRecord.getDate().equals(medRecord2.getDate())){
-
-
-
-                                System.out.println("[DEBUG] ✓ Double delivery POSSIBLE!");
-
-                                completedDeliveries.add(medRecord2.getId());
-
-                                // Update totals
-                                totalCost += pathCosts;
-                                totalMoves += pathMoves;
-
-                                // Build combined paths
-                                List<Position> secondFull = new ArrayList<>();
-                                secondFull.addAll(path2.getPaths());
-                                secondFull.addAll(path3.getPaths());
-
-                                DeliveryPath.Delivery delivery1 = new DeliveryPath.Delivery();
-                                delivery1.setDeliveryId(medRecord.getId());
-                                delivery1.setFlightPath(path.getPaths());
-
-                                DeliveryPath.Delivery delivery2 = new DeliveryPath.Delivery();
-                                delivery2.setDeliveryId(medRecord2.getId());
-                                delivery2.setFlightPath(secondFull);
-
-                                List<DeliveryPath.Delivery> combinedDeliveries = new ArrayList<>();
-                                combinedDeliveries.add(delivery1);
-                                combinedDeliveries.add(delivery2);
-
-                                DeliveryPath.DronePath dronePath = new DeliveryPath.DronePath();
-                                dronePath.setDroneId(droneID);
-                                dronePath.setDeliveries(combinedDeliveries);
-
-                                result.getDronePaths().add(dronePath);
-                                noSecond = false;
-
-                                break;
-
-
-                        } else {
-                            System.out.println("[DEBUG] ✗ Double delivery NOT possible → Break");
-                            break;
-                        }
+                    // Add initial/final only if this delivery starts a sequence (or after a return)
+                    if (needsReturn || sequenceDeliveries.isEmpty()) {
+                        deliveryCost += costInitial + costFinal;
                     }
+
+                    usedCostForTotals += deliveryCost;
+
+                    DeliveryPath.Delivery acceptedDelivery = new DeliveryPath.Delivery();
+                    acceptedDelivery.setDeliveryId(candidate.getId());
+
+                    List<Position> flight = new ArrayList<>();
+                    flight.addAll(legPath.getPaths());
+                    flight.addAll(returnPath.getPaths());
+                    acceptedDelivery.setFlightPath(flight);
+
+                    droneDeliveries.add(acceptedDelivery);
+                    completedDeliveries.add(candidate.getId());
+
+                    currentPos = candidate.getDelivery();
+                    sequenceDeliveries.add(candidate);
+                    keepTrying = true;
+                    break; // restart scanning medRecords
                 }
+            }
 
-                // ----------------------------------------
-                // ONLY ONE DELIVERY CASE
-                // ----------------------------------------
-                if(noSecond){
-                    System.out.println("\n[DEBUG] No second delivery possible → Single delivery mode");
+            if (!droneDeliveries.isEmpty()) {
+                DeliveryPath.DronePath dp = new DeliveryPath.DronePath();
+                dp.setDroneId(droneID);
+                dp.setDeliveries(droneDeliveries);
+                result.getDronePaths().add(dp);
 
-                    System.out.println("[DEBUG] Computing RETURN path...");
-                    PathResult pathBack = computePath(destination, start, restrictedAreas);
-                    System.out.println("[DEBUG] return path = " + (pathBack == null ? "NULL" : "OK"));
-
-                    double backMoves = pathBack.getMoves();
-                    double backCost = backMoves * droneMap.get(droneID).getCapability().getCostPerMove();
-
-                    totalCost += backCost + thisCost
-                            + droneMap.get(droneID).getCapability().getCostFinal()
-                            + droneMap.get(droneID).getCapability().getCostInitial();
-
-                    totalMoves += backMoves + thisMoves;
-
-                    List<Position> fullJourney = new ArrayList<>();
-                    fullJourney.addAll(path.getPaths());
-                    fullJourney.addAll(pathBack.getPaths());
-
-                    DeliveryPath.Delivery delivery = new DeliveryPath.Delivery();
-                    delivery.setDeliveryId(medRecord.getId());
-                    delivery.setFlightPath(fullJourney);
-
-                    DeliveryPath.DronePath dronePath = new DeliveryPath.DronePath();
-                    dronePath.setDroneId(droneID);
-                    dronePath.setDeliveries(List.of(delivery));
-
-                    result.getDronePaths().add(dronePath);
-                }
-
-                break;
+                globalTotalCost += usedCostForTotals;
+                globalTotalMoves += usedMoves;
             }
         }
 
-        System.out.println("\n==============================");
-        System.out.println("FINAL totalCost = " + totalCost);
-        System.out.println("FINAL totalMoves = " + totalMoves);
-        System.out.println("==============================\n");
+        result.setTotalCost(globalTotalCost);
+        result.setTotalMoves(globalTotalMoves);
 
-        result.setTotalCost(totalCost);
-        result.setTotalMoves(totalMoves);
+        System.out.println("\n==============================");
+        System.out.println("FINAL totalCost = " + result.getTotalCost());
+        System.out.println("FINAL totalMoves = " + result.getTotalMoves());
+        System.out.println("==============================\n");
 
         return result;
     }
+
+
 
     public static DeliveryPath calcDeliveryPathCalc(String endpoint, List<MedDispatchRec> medRecords) {
         System.out.println("\n==============================");
@@ -768,14 +672,15 @@ public class DroneCalc {
 
         for (DeliveryPath.DronePath dronePath : deliveryPath.getDronePaths()) {
             for (DeliveryPath.Delivery delivery : dronePath.getDeliveries()) {
+
                 Map<String, Object> feature = new HashMap<>();
+
                 feature.put("type", "Feature");
 
                 // Properties (optional)
                 Map<String, Object> properties = new HashMap<>();
-                properties.put("droneId", dronePath.getDroneId());
-                properties.put("deliveryId", delivery.getDeliveryId());
                 feature.put("properties", properties);
+
 
                 // Geometry
                 Map<String, Object> geometry = new HashMap<>();
@@ -796,7 +701,7 @@ public class DroneCalc {
         return geoJson;
     }
 
-    public static Map<String, Object> function5(String endpoint, List<MedDispatchRec> medRecords){
+    public static Map<String, Object> calcDeliveryPathAsGeoJsonCalc(String endpoint, List<MedDispatchRec> medRecords){
         return convertDeliveryPathToGeoJson(calcDeliveryPathCalc(endpoint, medRecords));
     }
 

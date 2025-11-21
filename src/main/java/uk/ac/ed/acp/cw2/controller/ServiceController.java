@@ -128,8 +128,8 @@ public class ServiceController {
         return DroneCalc.calcDeliveryPathCalc(ilpEndpoint, input);
     }
 
-    @PostMapping("/function5")
-    public Map<String, Object> function5(@RequestBody List<MedDispatchRec> input){
-        return DroneCalc.function5(ilpEndpoint, input);
+    @PostMapping("/calcDeliveryPathAsGeoJson")
+    public Map<String, Object> calcDeliveryPathAsGeoJson(@RequestBody List<MedDispatchRec> input){
+        return DroneCalc.calcDeliveryPathAsGeoJsonCalc(ilpEndpoint, input);
     }
 }
