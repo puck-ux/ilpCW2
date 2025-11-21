@@ -12,4 +12,8 @@ public class Position {
     private Double lat;
 
 
+    public Position(Double lng, Double lat) {
+        this.lng = lng;
+        this.lat = lat;
+    }
 }

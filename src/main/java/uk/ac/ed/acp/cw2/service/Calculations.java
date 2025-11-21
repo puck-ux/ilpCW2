@@ -56,18 +56,16 @@ public class Calculations {
         Position start = input.getStart();
         Double angle = input.getAngle();
 
-        // handle angle that is not one of the 16 given in document
-        if(angle % 22.5 > 0 || checkPosinValid(start) || angle > 360){
+        // angle validation
+        if(angle % 22.5 > 1e-9 || checkPosinValid(start) || angle > 360){
             throw400();
         }
 
-        // get angle in radians
+        // compute angle in radians
         double radAngle = Math.toRadians(angle);
-        // update lng and lat with added distance from start
-        start.setLng(start.getLng() + (STEP * Math.cos(radAngle)));
-        start.setLat(start.getLat() + (STEP * Math.sin(radAngle)));
 
-        return start;
+        // create new position
+        return new Position(start.getLng() + (STEP * Math.cos(radAngle)), start.getLat() + (STEP * Math.sin(radAngle)));
     }
 
     private static Boolean OnLine(double poslng, double poslat, double lngi, double lati, double lngj, double latj, double tolerance){
@@ -92,7 +90,7 @@ public class Calculations {
         Position first = vertices.getFirst();
         Position last = vertices.getLast();
         // check validity of position and list length
-        if(checkPosinValid(position) || vertices.size() != 5){
+        if(checkPosinValid(position) || vertices.size() < 4){
             throw400();
         } else if (!Objects.equals(first.getLat(), last.getLat()) ||
                 !Objects.equals(first.getLng(), last.getLng())) {
@@ -113,7 +111,7 @@ public class Calculations {
             double lngj = vertices.get(j).getLng(), latj = vertices.get(j).getLat();
 
             // check if on edge
-            if(OnLine(position.getLng(), position.getLat(), lngi, lati, lngj, latj, 1e-9)){
+            if(OnLine(position.getLng(), position.getLat(), lngi, lati, lngj, latj, 1e-12)){
                 return true;
             }
 

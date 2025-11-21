@@ -13,6 +13,7 @@ public class RestrictedAreas {
     private Limits limits;
     private List<Position> vertices;
 
+
     @Getter
     @Setter
     public static class Limits{

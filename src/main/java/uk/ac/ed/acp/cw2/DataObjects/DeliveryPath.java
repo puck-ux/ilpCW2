@@ -8,8 +8,8 @@ import lombok.Setter;
 @Setter
 public class DeliveryPath {
 
-    private Long totalCost;
-    private Long totalMoves;
+    private Double totalCost;
+    private Double totalMoves;
     private List<DronePath> dronePaths;
 
     @Getter

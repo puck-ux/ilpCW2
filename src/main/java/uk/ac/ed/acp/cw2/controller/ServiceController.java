@@ -127,4 +127,9 @@ public class ServiceController {
     public DeliveryPath calcDeliveryPath(@RequestBody List<MedDispatchRec> input){
         return DroneCalc.calcDeliveryPathCalc(ilpEndpoint, input);
     }
+
+    @PostMapping("/function5")
+    public Map<String, Object> function5(@RequestBody List<MedDispatchRec> input){
+        return DroneCalc.function5(ilpEndpoint, input);
+    }
 }

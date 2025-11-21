@@ -225,4 +225,56 @@ class AcpCw2ApplicationTests {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void testCalcDeliveryPath() throws Exception {
+        String json = """
+    [
+        {
+            "id": 1,
+            "date": "2025-01-01",
+            "time": "14:30",
+            "requirements": {
+                "capacity": 0.01,
+                "cooling": false,
+                "heating": false,
+                "maxCost": 1000.0
+            },
+            "delivery": {
+                "lng": -3.189,
+                "lat": 55.941
+            }
+        },
+        {
+            "id": 2,
+            "date": "2025-01-02",
+            "time": "14:30",
+            "requirements": {
+                "capacity": 0.01,
+                "cooling": false,
+                "heating": false,
+                "maxCost": 1000.0
+            },
+            "delivery": {
+                "lng": -3.180,
+                "lat": 55.941
+            }
+        }
+    ]
+    """;
+
+        mockMvc.perform(post("/api/v1/calcDeliveryPath")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dronePaths").isArray())
+                .andExpect(jsonPath("$.dronePaths.length()").value(org.hamcrest.Matchers.greaterThan(0)))
+                .andExpect(jsonPath("$.dronePaths[0].droneId").isNotEmpty())
+                .andExpect(jsonPath("$.dronePaths[0].deliveries").isArray())
+                .andExpect(jsonPath("$.dronePaths[0].deliveries.length()").value(org.hamcrest.Matchers.greaterThan(0)))
+                .andExpect(jsonPath("$.dronePaths[0].deliveries[0].deliveryId").isNumber())
+                .andExpect(jsonPath("$.dronePaths[0].deliveries[0].flightPath").isArray())
+                .andExpect(jsonPath("$.totalCost").exists())
+                .andExpect(jsonPath("$.totalMoves").exists());
+    }
+
 }
