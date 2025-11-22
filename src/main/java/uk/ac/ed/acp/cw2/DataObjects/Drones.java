@@ -16,11 +16,11 @@ public class Drones {
     public static class Capability {
         private Boolean cooling;
         private Boolean heating;
-        private Long capacity;
-        private Long maxMoves;
-        private Long costPerMove;
-        private Long costInitial;
-        private Long costFinal;
+        private Double capacity;
+        private Double maxMoves;
+        private Double costPerMove;
+        private Double costInitial;
+        private Double costFinal;
     }
 
 }

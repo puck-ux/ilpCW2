@@ -2,10 +2,8 @@ package uk.ac.ed.acp.cw2.service;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.server.ResponseStatusException;
 import uk.ac.ed.acp.cw2.DataObjects.*;
 
 import java.time.LocalDate;
@@ -94,7 +92,7 @@ public class DroneCalc {
         }
     }
 
-    public static boolean compareLongs(Long a, Long b, String operator) {
+    public static boolean compareDoubles(Double a, Double b, String operator) {
         return switch (operator) {
             case ">" -> a > b;
             case "<" -> a < b;
@@ -146,18 +144,19 @@ public class DroneCalc {
         return null;
     }
 
+    // check if position is valid
     private static boolean isPositionValid(Position pos, List<RestrictedAreas> restrictedAreas) {
 
         for (RestrictedAreas area : restrictedAreas) {
-            RegionFormat rf = new RegionFormat();
-            rf.setPosition(pos);
+            RegionFormat regionF = new RegionFormat();
+            regionF.setPosition(pos);
 
             Region region = new Region();
             region.setVertices(area.getVertices());
             region.setName(area.getName());
-            rf.setRegion(region);
+            regionF.setRegion(region);
 
-            if (Calculations.isInRegionCalc(rf)) {
+            if (Calculations.isInRegionCalc(regionF)) {
                 return false;
             }
         }
@@ -171,7 +170,8 @@ public class DroneCalc {
             180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5
     };
 
-    public static Position nextStep(Position current, Position destination, List<RestrictedAreas> restricted, Position lastPosition) {
+    // return the drones next move
+    public static Position nextMove(Position current, Position destination, List<RestrictedAreas> restricted, Position lastPosition) {
 
         Position bestMove = null;
         double bestScore = Double.MAX_VALUE;
@@ -208,15 +208,15 @@ public class DroneCalc {
             // Skip if blocked by restricted areas
             if (!isPositionValid(nextPos, restricted)) continue;
 
-            // Skip if too close to last position (avoid backtracking)
+            // Skip if too close to last position
             double distanceToLast = Calculations.distanceToCalc(new TwoPosConfig(lastPosition, nextPos));
             if (distanceToLast < 0.00005) continue;
 
             // Score = distance to destination
-            double distToDest = Calculations.distanceToCalc(new TwoPosConfig(nextPos, destination));
+            double distance = Calculations.distanceToCalc(new TwoPosConfig(nextPos, destination));
 
-            if (distToDest < bestScore) {
-                bestScore = distToDest;
+            if (distance < bestScore) {
+                bestScore = distance;
                 bestMove = nextPos;
             }
             //break if found valid and gone through pair/0
@@ -252,7 +252,7 @@ public class DroneCalc {
 
         while (Calculations.distanceToCalc(cfg) > 0.00015) {
 
-            Position next = nextStep(current, destination, restricted, lastPosition);
+            Position next = nextMove(current, destination, restricted, lastPosition);
 
             if (next.equals(current)) {
                 break;
@@ -295,14 +295,14 @@ public class DroneCalc {
     }
 
     // returns drone with given id
-    public static Drones droneDetailsCalc(String endpoint, String id){
+    public static ResponseEntity<Drones> droneDetailsCalc(String endpoint, String id){
         List<Drones> drones = getDrones(endpoint);
         Map<String, Drones> droneMap = drones.stream().collect(Collectors.toMap(Drones::getId, drone -> drone));
         Drones foundDrone;
         if ((foundDrone = droneMap.get(id)) != null) {
-            return foundDrone;
+            return ResponseEntity.ok(foundDrone);
         } else {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "404");
+            return ResponseEntity.notFound().build();
         }
     }
 
@@ -339,28 +339,28 @@ public class DroneCalc {
         }
 
         // handles cases of longs
-        Long value = Long.parseLong(attributeValue);
+        Double value = Double.parseDouble(attributeValue);
         for(Drones drone :  drones){
             Drones.Capability capability = drone.getCapability();
             switch (attributeName){
                 case "capacity":
-                    if(compareLongs(capability.getCapacity(), value, operator)){
+                    if(compareDoubles(capability.getCapacity(), value, operator)){
                         droneIDs.add(drone.getId());
                     } break;
                 case "maxMoves":
-                    if(compareLongs(capability.getMaxMoves(), value, operator)){
+                    if(compareDoubles(capability.getMaxMoves(), value, operator)){
                         droneIDs.add(drone.getId());
                     } break;
                 case "costPerMove":
-                    if(compareLongs(capability.getCostPerMove(), value, operator)){
+                    if(compareDoubles(capability.getCostPerMove(), value, operator)){
                         droneIDs.add(drone.getId());
                     } break;
                 case "costInitial":
-                    if(compareLongs(capability.getCostInitial(), value, operator)){
+                    if(compareDoubles(capability.getCostInitial(), value, operator)){
                         droneIDs.add(drone.getId());
                     } break;
                 case "costFinal":
-                    if(compareLongs(capability.getCostFinal(), value, operator)){
+                    if(compareDoubles(capability.getCostFinal(), value, operator)){
                         droneIDs.add(drone.getId());
                     } break;
             }
@@ -426,9 +426,13 @@ public class DroneCalc {
                                             if( numbMoves <= drone.getCapability().getMaxMoves()) {
                                                 // check requirements
                                                 MedDispatchRec.Requirements requirements = medRecord.getRequirements();
-                                                if (requirements.getCooling() != null && requirements.getHeating() != null) {
-                                                    if ((requirements.getCooling() ? capability.getCooling() : true) &&
-                                                            (requirements.getHeating() ? capability.getHeating() : true) &&
+                                                if(requirements.getCooling() != null){
+                                                    if((requirements.getCooling() ? capability.getCooling() : true) &&
+                                                            capability.getCapacity() >= requirements.getCapacity()){
+                                                        count++;
+                                                    }
+                                                } else if (requirements.getHeating() != null) {
+                                                    if ((requirements.getHeating() ? capability.getHeating() : true) &&
                                                             capability.getCapacity() >= requirements.getCapacity()) {
                                                         count++;
                                                     }
