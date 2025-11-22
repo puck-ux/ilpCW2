@@ -124,18 +124,6 @@ public class DroneCalc {
         return new ArrayList<>(intersection);
     }
 
-    /*
-    public static Map<String, List<ServicePoints.Day>> getDroneDays(List<ServicePoints> servicePoints) {
-        Map<String, List<ServicePoints.Day>> droneDays = new HashMap<>();
-        for (ServicePoints servicePoint : servicePoints) {
-            for(ServicePoints.DroneService servDrone : servicePoint.getDrones()){
-                droneDays.put(servDrone.getId(), servDrone.getAvailability());
-            }
-        }
-        return droneDays;
-    }
-    */
-
     // get start pos of drone
     public static Position getDroneStartPosition(String droneId, List<ServicePointCoords> servicePointCoords, List<ServicePoints> servicePoints) {
         // go through points
@@ -159,7 +147,6 @@ public class DroneCalc {
     }
 
     private static boolean isPositionValid(Position pos, List<RestrictedAreas> restrictedAreas) {
-        System.out.println("[DEBUG] Checking validity of position: " + pos.getLat() + ", " + pos.getLng());
 
         for (RestrictedAreas area : restrictedAreas) {
             RegionFormat rf = new RegionFormat();
@@ -171,12 +158,10 @@ public class DroneCalc {
             rf.setRegion(region);
 
             if (Calculations.isInRegionCalc(rf)) {
-                System.out.println("[DEBUG] Position is inside restricted area: " + area.getName());
                 return false;
             }
         }
 
-        System.out.println("[DEBUG] Position valid.");
         return true;
     }
 
@@ -207,7 +192,7 @@ public class DroneCalc {
             }
         }
 
-        double[] angleOffsets = {0, -45, -22.5, 22.5, 45, -67.5, 67.5, -90, 90, -112.5, 112.5, -135, 135, -157.5, 157.5};
+        double[] angleOffsets = {0, -22.5, 22.5, -45, 45, -67.5, 67.5, -90, 90, -112.5, 112.5, -135, 135, -157.5, 157.5};
 
         for (double offset : angleOffsets) {
             double angle = snapped + offset;
@@ -234,6 +219,8 @@ public class DroneCalc {
                 bestScore = distToDest;
                 bestMove = nextPos;
             }
+            //break if found valid and gone through pair/0
+            if(offset >= 0) break;
         }
 
         return bestMove;
@@ -242,10 +229,6 @@ public class DroneCalc {
 
     public static PathResult computePath(
             Position start, Position destination, List<RestrictedAreas> restricted) {
-
-        System.out.println("\n[DEBUG] === computePath() ===");
-        System.out.println("[DEBUG] Start: " + start.getLat() + ", " + start.getLng());
-        System.out.println("[DEBUG] Destination: " + destination.getLat() + ", " + destination.getLng());
 
         if (start == null || destination == null)
             throw new IllegalArgumentException("Start or destination cannot be null.");
@@ -268,22 +251,12 @@ public class DroneCalc {
         int safety = 0;
 
         while (Calculations.distanceToCalc(cfg) > 0.00015) {
-            System.out.println("\n[DEBUG] Loop iteration " + moves);
-            System.out.println("[DEBUG] Current distance: " + Calculations.distanceToCalc(cfg));
 
             Position next = nextStep(current, destination, restricted, lastPosition);
 
-            if (next == null) {
-                System.out.println("[DEBUG] Next step is null → stuck!");
-                break;
-            }
-
             if (next.equals(current)) {
-                System.out.println("[DEBUG] Next equals current → no progress → breaking");
                 break;
             }
-
-            System.out.println("[DEBUG] Moving to: " + next.getLat() + ", " + next.getLng());
 
             path.add(next);
             lastPosition = current;
@@ -292,18 +265,15 @@ public class DroneCalc {
             moves++;
 
             if (safety++ > 20000) {
-                System.out.println("[DEBUG] Safety limit exceeded — aborting path.");
                 break;
             }
         }
 
         if (!current.equals(destination)) {
-            System.out.println("[DEBUG] Adding final destination to path.");
             path.add(destination);
             moves++;
         }
 
-        System.out.println("[DEBUG] Path complete. Total moves = " + moves);
         return new PathResult(path, moves);
     }
 
@@ -446,10 +416,8 @@ public class DroneCalc {
 
                                             //calculate distance times by two since every drone must go back
                                             Double numbMoves = 2*((Calculations.distanceToCalc(cfg))/0.00015);
-                                            System.out.println("NUMBER OF MOVES " + numbMoves);
                                             // check location is valid with cost and moves
                                             if(medRecord.getRequirements().getMaxCost() != null){
-                                                System.out.println("TRIGGERING");
                                                 if((numbMoves*drone.getCapability().getCostPerMove() + drone.getCapability().getCostFinal() + drone.getCapability().getCostInitial()) > medRecord.getRequirements().getMaxCost()) {
                                                     break;
                                                 }
@@ -458,7 +426,6 @@ public class DroneCalc {
                                             if( numbMoves <= drone.getCapability().getMaxMoves()) {
                                                 // check requirements
                                                 MedDispatchRec.Requirements requirements = medRecord.getRequirements();
-                                                System.out.println("drone capacity for drone " + drone.getId() + " is: " + capability.getCapacity() + " medrecord capability " + requirements.getCapacity());
                                                 if (requirements.getCooling() != null && requirements.getHeating() != null) {
                                                     if ((requirements.getCooling() ? capability.getCooling() : true) &&
                                                             (requirements.getHeating() ? capability.getHeating() : true) &&
@@ -488,11 +455,6 @@ public class DroneCalc {
 
 
     public static DeliveryPath calcDeliveryPathMain(String endpoint, List<MedDispatchRec> medRecords) {
-
-        System.out.println("\n==============================");
-        System.out.println("calcDeliveryPathMain START");
-        System.out.println("Incoming medRecords = " + medRecords.size());
-        System.out.println("==============================\n");
 
         DeliveryPath result = new DeliveryPath();
         result.setDronePaths(new ArrayList<>());
@@ -612,21 +574,12 @@ public class DroneCalc {
         result.setTotalCost(globalTotalCost);
         result.setTotalMoves(globalTotalMoves);
 
-        System.out.println("\n==============================");
-        System.out.println("FINAL totalCost = " + result.getTotalCost());
-        System.out.println("FINAL totalMoves = " + result.getTotalMoves());
-        System.out.println("==============================\n");
-
         return result;
     }
 
 
 
     public static DeliveryPath calcDeliveryPathCalc(String endpoint, List<MedDispatchRec> medRecords) {
-        System.out.println("\n==============================");
-        System.out.println("calcDeliveryPathByDay START");
-        System.out.println("Incoming medRecords = " + medRecords.size());
-        System.out.println("==============================\n");
 
         DeliveryPath result = new DeliveryPath();
         result.setDronePaths(new ArrayList<>());
@@ -640,7 +593,6 @@ public class DroneCalc {
                 .collect(Collectors.groupingBy(MedDispatchRec::getDate));
 
         for (LocalDate date : recordsByDate.keySet()) {
-            System.out.println("\n[DEBUG] Processing deliveries for date: " + date);
             List<MedDispatchRec> dailyRecords = recordsByDate.get(date);
 
             // Reuse your existing single-day delivery logic
@@ -655,7 +607,7 @@ public class DroneCalc {
         }
 
         System.out.println("\n==============================");
-        System.out.println("FINAL CALC FUNCtotalCost = " + result.getTotalCost());
+        System.out.println("FINAL totalCost = " + result.getTotalCost());
         System.out.println("FINAL totalMoves = " + result.getTotalMoves());
         System.out.println("==============================\n");
 
@@ -704,6 +656,5 @@ public class DroneCalc {
     public static Map<String, Object> calcDeliveryPathAsGeoJsonCalc(String endpoint, List<MedDispatchRec> medRecords){
         return convertDeliveryPathToGeoJson(calcDeliveryPathCalc(endpoint, medRecords));
     }
-
 
 }
