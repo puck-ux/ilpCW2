@@ -182,7 +182,7 @@ public class DroneCalc {
         if (mainAngle < 0) mainAngle += 360;
 
         // Snap to nearest allowed angle
-        double snapped = ALLOWED_ANGLES[0];
+        double snapped = 0;
         double diffMin = Math.abs(mainAngle - snapped);
         for (double angle : ALLOWED_ANGLES) {
             double diff = Math.abs(mainAngle - angle);
